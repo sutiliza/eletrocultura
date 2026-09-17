@@ -1,0 +1,1273 @@
+<style id="up-oracular-design-system">
+:root {
+  color-scheme: dark;
+  --uo-bg: #15171c;
+  --uo-panel: #20242b;
+  --uo-text: #e9ecf1;
+  --uo-muted: #b2b9c4;
+  --uo-border: #343941;
+  --uo-accent: #7aa2d6;
+  --uo-radius-group: 10px;
+  --uo-radius-control: 8px;
+}
+
+html, body {
+  background: var(--uo-bg) !important;
+  color: var(--uo-text) !important;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body, input, select, textarea, button {
+  color: var(--uo-text);
+}
+
+.card, .panel, .modal, .dialog, dialog, .container,
+.box, .widget, .section, .sidebar, .drawer, .popover,
+[role="dialog"], [class*="card"], [class*="panel"] {
+  background-color: var(--uo-panel) !important;
+  border-color: var(--uo-border) !important;
+  border-radius: var(--uo-radius-group) !important;
+}
+
+button, input, select, textarea, .btn, .button,
+[role="button"], [role="menuitem"], .dropdown-item,
+.menu-item, [class*="button"], [class*="dropdown-item"] {
+  border-radius: var(--uo-radius-control) !important;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+input, select, textarea {
+  background-color: var(--uo-panel) !important;
+  border: 1px solid var(--uo-border) !important;
+  padding: 8px !important;
+  box-sizing: border-box;
+}
+
+label, .form-label, [class*="form-label"] {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--uo-muted) !important;
+  font-size: 13px !important;
+  line-height: 1.35;
+}
+
+.uo-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.uo-feedback-box {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 2147483647;
+  min-width: 220px;
+  max-width: min(420px, calc(100vw - 32px));
+  padding: 10px 12px;
+  border: 1px solid var(--uo-border);
+  border-radius: var(--uo-radius-group);
+  background: var(--uo-panel);
+  color: var(--uo-text);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.32);
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+
+.uo-feedback-box.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.uo-feedback-box[data-kind="ok"] {
+  border-color: #8fc2a6;
+  color: #8fc2a6;
+}
+
+.uo-feedback-box[data-kind="err"] {
+  border-color: #d98b93;
+  color: #d98b93;
+}
+
+form[aria-busy="true"] {
+  opacity: 0.72;
+  cursor: progress;
+}
+
+form[aria-busy="true"] :is(button, input[type="submit"], input[type="button"]) {
+  pointer-events: none;
+}
+
+button, .btn-primary, .button-primary,
+[class*="primary"][role="button"] {
+  background-color: var(--uo-accent) !important;
+}
+
+p, small, .muted, .secondary, .subtitle,
+[class*="muted"], [class*="secondary"] {
+  color: var(--uo-muted) !important;
+}
+
+hr, table, th, td, fieldset {
+  border-color: var(--uo-border) !important;
+}
+
+a {
+  color: var(--uo-accent);
+}
+
+/* Geometrias funcionais permanecem circulares. */
+.avatar, .spinner, .loading-ring, .dot, .status-dot,
+[class*="avatar"], [class*="spinner"], [class*="loading-ring"] {
+  border-radius: 50% !important;
+}
+</style>
+<script id="up-oracular-form-feedback">
+(function () {
+  'use strict';
+  if (window.UpOracularFeedback) return;
+
+  var timer = null;
+  function notify(kind, message) {
+    var box = document.getElementById('uo-feedback-box');
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'uo-feedback-box';
+      box.className = 'uo-feedback-box';
+      box.setAttribute('role', 'status');
+      box.setAttribute('aria-live', 'polite');
+      document.body.appendChild(box);
+    }
+    box.dataset.kind = kind === 'err' ? 'err' : 'ok';
+    box.textContent = String(message || (kind === 'err' ? 'Nao foi possivel concluir.' : 'Operacao concluida.'));
+    box.classList.add('is-visible');
+    clearTimeout(timer);
+    timer = setTimeout(function () {
+      box.classList.remove('is-visible');
+    }, 1000);
+  }
+
+  function connectLabels(form) {
+    form.querySelectorAll('input:not([type="hidden"]), select, textarea').forEach(function (field, index) {
+      var id = field.id || ('uo-field-' + index + '-' + Math.random().toString(36).slice(2, 7));
+      field.id = id;
+      var label = form.querySelector('label[for="' + id + '"]');
+      if (!label) {
+        var sibling = field.previousElementSibling;
+        if (sibling && sibling.tagName === 'LABEL') {
+          sibling.htmlFor = id;
+          label = sibling;
+        }
+      }
+      if (label && field.parentElement && !field.parentElement.classList.contains('uo-field')) {
+        field.parentElement.classList.add('uo-field');
+      }
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('form').forEach(connectLabels);
+  });
+
+  document.addEventListener('submit', function (event) {
+    var form = event.target;
+    if (!form || form.tagName !== 'FORM') return;
+    form.setAttribute('aria-busy', 'true');
+    notify('ok', 'Enviando...');
+    window.setTimeout(function () {
+      if (form.getAttribute('aria-busy') === 'true') {
+        form.removeAttribute('aria-busy');
+      }
+    }, 10000);
+  }, true);
+
+  window.UpOracularFeedback = {
+    ok: function (message) { notify('ok', message); },
+    err: function (message) { notify('err', message); },
+    done: function (form, message) {
+      if (form) form.removeAttribute('aria-busy');
+      notify('ok', message);
+    },
+    fail: function (form, message) {
+      if (form) form.removeAttribute('aria-busy');
+      notify('err', message);
+    }
+  };
+}());
+</script>
+
+<style>
+
+
+/* codex-school-community-ux: ajustes finos para uso recorrente por comunidade escolar */
+:root {
+  --codex-school-focus: #ffd166;
+  --codex-school-touch: 44px;
+  --codex-school-radius: 8px;
+  --codex-school-field-radius: 7px;
+  --codex-school-form-gap: 14px;
+  --codex-school-field-border: rgba(120, 132, 156, 0.45);
+  --codex-school-field-bg: rgba(255, 255, 255, 0.96);
+  --codex-school-field-text: #1f2937;
+  --codex-school-muted-text: #64748b;
+  --codex-school-soft-surface: rgba(248, 250, 252, 0.82);
+  --codex-school-safe-bottom: max(16px, env(safe-area-inset-bottom));
+}
+
+:where(html) {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+:where(body) {
+  overscroll-behavior-y: contain;
+}
+
+:where(p, li, dd, dt, blockquote, figcaption, label, td, th) {
+  line-height: 1.5;
+}
+
+:where(main, .main, .content, .page, .app, .app-shell, .container, .dashboard, .workspace) {
+  padding-bottom: var(--codex-school-safe-bottom);
+}
+
+:where(a, button, .btn, .button, [role="button"], input, select, textarea, summary) {
+  min-height: var(--codex-school-touch);
+  touch-action: manipulation;
+}
+
+:where(button, .btn, .button, [role="button"], input[type="submit"], input[type="button"]) {
+  border-radius: var(--codex-school-radius) !important;
+  font-weight: 700;
+}
+
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 3px solid var(--codex-school-focus) !important;
+  outline-offset: 3px !important;
+}
+
+:where(label) {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  color: var(--codex-gentle-muted, var(--text-muted, var(--codex-school-muted-text)));
+  font-weight: 700;
+}
+
+:where(form) {
+  border-radius: var(--codex-school-radius) !important;
+}
+
+:where(fieldset) {
+  border-radius: var(--codex-school-radius) !important;
+  border-color: var(--codex-school-field-border);
+}
+
+:where(legend) {
+  padding-inline: 6px;
+  font-weight: 700;
+}
+
+:where(.form-group, .input-field, .field, .form-field, .control-group) {
+  margin-bottom: var(--codex-school-form-gap);
+}
+
+:where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea) {
+  width: min(100%, 100%);
+  border-radius: var(--codex-school-field-radius) !important;
+  border-color: var(--codex-school-field-border) !important;
+  background-color: var(--input-bg, var(--field-bg, var(--codex-school-field-bg)));
+  color: var(--input-text, var(--text-color, var(--codex-school-field-text)));
+  font-size: 16px !important;
+}
+
+:where(input::placeholder, textarea::placeholder) {
+  color: var(--placeholder-color, #94a3b8);
+  opacity: 1;
+}
+
+:where(input[required], select[required], textarea[required]) {
+  border-left: 3px solid var(--codex-gentle-primary-strong, #aecbfa) !important;
+}
+
+:where(input:disabled, select:disabled, textarea:disabled, button:disabled, [aria-disabled="true"]) {
+  cursor: not-allowed !important;
+  opacity: 0.68;
+}
+
+:where(.help, .hint, .help-text, .form-help, small) {
+  line-height: 1.45;
+  color: var(--codex-gentle-muted, var(--text-muted, var(--codex-school-muted-text)));
+}
+
+:where(.actions, .form-actions, .button-row, .toolbar, .topbar, nav, [role="toolbar"]) {
+  gap: 8px;
+}
+
+:where(.actions, .form-actions, .button-row) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+:where(.actions, .form-actions, .button-row) > :where(button, .btn, .button, [role="button"]) {
+  flex: 1 1 148px;
+}
+
+:where(.card, .panel, .box, .tile, .item, .list-item, .action-card) {
+  border-radius: var(--codex-school-radius) !important;
+}
+
+:where(.section, .surface, .widget, .modal-content, .dialog-content, .drawer, .dropdown, .menu) {
+  border-radius: var(--codex-school-radius) !important;
+}
+
+:where(.filters, .search-panel, .form-section) {
+  border-radius: var(--codex-school-radius) !important;
+  background: var(--codex-school-soft-surface);
+}
+
+:where(table) {
+  border-collapse: collapse;
+}
+
+:where(table, .table, .data-table) {
+  max-width: 100%;
+}
+
+:where(.table-wrap, .table-wrapper, .table-container, .responsive-table) {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+:where(th, td) {
+  vertical-align: top;
+}
+
+:where(.toast, .alert, .notice, .snackbar, [role="status"], [role="alert"]) {
+  border-radius: var(--codex-school-radius) !important;
+  line-height: 1.45;
+}
+
+@media (max-width: 420px) {
+  :where(body) {
+    font-size: 16px;
+  }
+
+  :where(h1) {
+    font-size: clamp(1.55rem, 1.35rem + 1vw, 2rem) !important;
+    line-height: 1.15 !important;
+  }
+
+  :where(h2) {
+    font-size: clamp(1.25rem, 1.1rem + 0.8vw, 1.55rem) !important;
+    line-height: 1.2 !important;
+  }
+
+  :where(.toolbar, .topbar, nav, [role="toolbar"]) {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+
+  :where(.hide-mobile, .desktop-only) {
+    display: none !important;
+  }
+}
+</style>
+<!--
+  ==============================================================================
+  COMPONENTE: Scripts.html
+  TÍTULO: Lógica JavaScript Central
+  FUNCIONALIDADES:
+    - Gerencia o estado da aplicação SPA, transição de páginas e chamadas assíncronas ao servidor GAS.
+  INTEGRAÇÕES E DEPENDÊNCIAS:
+    - Index.html, Main.gs.
+  AUTOR: Manus AI | DATA: Junho 2026
+  ==============================================================================
+-->
+
+<script>
+  function readBootstrapToken_() {
+    try {
+      const hashParams = new URLSearchParams(location.hash.replace(/^#/, ''));
+      return hashParams.get('tok') || new URLSearchParams(location.search).get('tok') || '';
+    } catch (error) {
+      return '';
+    }
+  }
+
+  const storedSessionToken = localStorage.getItem('eletrocultura.session') || '';
+  const bootstrapToken = readBootstrapToken_();
+  const App = {
+    token: storedSessionToken || bootstrapToken,
+    user: null,
+    canteiros: [],
+    dashboardMetrics: {},
+    poeAttemptId: '',
+    currentPage: 'Login'
+  };
+
+  if (!storedSessionToken && bootstrapToken) {
+    try {
+      localStorage.setItem('eletrocultura.session', bootstrapToken);
+    } catch (error) {
+      // A sessão em memória ainda permite concluir o bootstrap desta página.
+    }
+  }
+
+  const PAGE_LOADERS = {
+    Dashboard: loadDashboard,
+    Canteiros_List: loadCanteiros,
+    Leituras_List: loadLeituras,
+    Biomassa_Log: loadBiomassaForm,
+    Settings: loadSettings
+  };
+
+  document.addEventListener('DOMContentLoaded', initializeApp);
+
+  function initializeApp() {
+    bindApplicationEvents();
+    if (!App.token) {
+      setAuthenticatedUi(null);
+      showPage('Login', { updateHistory: false });
+      return;
+    }
+
+    setStatus('Restaurando sua sessão...', 'loading');
+    apiCall('app.bootstrap')
+      .then(function(data) {
+        App.user = data.user;
+        App.canteiros = data.canteiros || [];
+        setAuthenticatedUi(App.user);
+        renderDashboard(data.dashboard || {});
+        renderCanteiros(App.canteiros);
+        updateCanteiroSelects(App.canteiros);
+        const requestedPage = getPageFromHash();
+        showPage(requestedPage === 'Login' ? 'Dashboard' : requestedPage, {
+          updateHistory: false,
+          skipLoad: requestedPage === 'Dashboard' || requestedPage === 'Canteiros_List'
+        });
+        clearStatus();
+      })
+      .catch(handleApiError);
+  }
+
+  function bindApplicationEvents() {
+    document.addEventListener('click', function(event) {
+      const pageControl = event.target.closest('[data-page]');
+      if (pageControl) {
+        showPage(pageControl.dataset.page);
+        closeMobileMenu();
+        return;
+      }
+
+      const actionControl = event.target.closest('[data-action]');
+      if (!actionControl) return;
+      if (actionControl.dataset.action === 'logout') logout();
+      if (actionControl.dataset.action === 'run-tests') runTests(actionControl);
+      if (actionControl.dataset.action === 'interpret-experiment') {
+        interpretExperiment(actionControl);
+      }
+      if (actionControl.dataset.action === 'emergency-shutdown') {
+        triggerEmergencyShutdown(actionControl);
+      }
+    });
+
+    bindForm('login-form', handleLogin);
+    bindForm('canteiro-form', saveCanteiro);
+    bindForm('biomassa-form', saveBiomassa);
+    bindForm('settings-form', saveSettings);
+    bindForm('icr-form', calculateIcr);
+    bindForm('export-form', downloadCsv);
+    bindForm('poe-form', submitPoe);
+    bindForm('poe-explanation-form', completePoe);
+
+    const menuToggle = document.getElementById('menu-toggle');
+    if (menuToggle) {
+      menuToggle.addEventListener('click', toggleMobileMenu);
+    }
+
+    window.addEventListener('hashchange', function() {
+      if (App.user) showPage(getPageFromHash(), { updateHistory: false });
+    });
+  }
+
+  function bindForm(id, handler) {
+    const form = document.getElementById(id);
+    if (form) {
+      form.addEventListener('submit', function(event) {
+        event.preventDefault();
+        if (!form.reportValidity()) return;
+        handler(form);
+      });
+    }
+  }
+
+  function apiCall(action, payload) {
+    return new Promise(function(resolve, reject) {
+      if (!window.google || !google.script || !google.script.run) {
+        reject(new Error('A ponte com o Google Apps Script não está disponível.'));
+        return;
+      }
+
+      google.script.run
+        .withSuccessHandler(function(response) {
+          if (response && response.success) {
+            resolve(response.data);
+            return;
+          }
+          const error = new Error(
+            response && response.message
+              ? response.message
+              : 'O servidor não conseguiu concluir a operação.'
+          );
+          error.code = response && response.error ? response.error.code : 'API_ERROR';
+          error.requestId = response && response.meta ? response.meta.requestId : '';
+          reject(error);
+        })
+        .withFailureHandler(function(serverError) {
+          reject(new Error(
+            serverError && serverError.message
+              ? serverError.message
+              : 'Falha de comunicação com o servidor.'
+          ));
+        })
+        .apiRequest({
+          action: action,
+          payload: payload || {},
+          token: App.token
+        });
+    });
+  }
+
+  function handleLogin(form) {
+    clearInlineError('login-error');
+    withBusy(form, function() {
+      return apiCall('auth.login', formToObject(form))
+        .then(function(data) {
+          App.token = data.token;
+          App.user = data.user;
+          localStorage.setItem('eletrocultura.session', App.token);
+          setAuthenticatedUi(App.user);
+          form.reset();
+          setStatus('Acesso autorizado. Carregando o painel...', 'success');
+          return apiCall('app.bootstrap');
+        })
+        .then(function(data) {
+          App.canteiros = data.canteiros || [];
+          renderDashboard(data.dashboard || {});
+          renderCanteiros(App.canteiros);
+          updateCanteiroSelects(App.canteiros);
+          showPage('Dashboard', { skipLoad: true });
+          clearStatusAfterDelay();
+        })
+        .catch(function(error) {
+          showInlineError('login-error', error.message);
+          handleApiError(error, { preservePage: true });
+        });
+    });
+  }
+
+  function logout() {
+    const logoutPromise = App.token
+      ? apiCall('auth.logout').catch(function() { return null; })
+      : Promise.resolve();
+    logoutPromise.then(function() {
+      clearSession();
+      setAuthenticatedUi(null);
+      showPage('Login');
+      setStatus('Sessão encerrada.', 'success');
+      clearStatusAfterDelay();
+    });
+  }
+
+  function showPage(pageId, options) {
+    const settings = options || {};
+    const target = document.getElementById(pageId);
+    const safePage = target && target.classList.contains('page-section') ? pageId : 'Dashboard';
+
+    if (!App.user && safePage !== 'Login') {
+      showPage('Login', settings);
+      return;
+    }
+
+    document.querySelectorAll('.page-section').forEach(function(page) {
+      page.classList.add('hidden');
+    });
+    const safeTarget = document.getElementById(safePage);
+    if (!safeTarget) return;
+
+    safeTarget.classList.remove('hidden');
+    App.currentPage = safePage;
+    updateNavigationState(safePage);
+
+    if (settings.updateHistory !== false) {
+      history.pushState(null, '', '#' + safePage);
+    }
+
+    document.getElementById('main-content').focus({ preventScroll: true });
+    if (!settings.skipLoad && PAGE_LOADERS[safePage]) {
+      setStatus('Atualizando dados...', 'loading');
+      PAGE_LOADERS[safePage]()
+        .then(clearStatus)
+        .catch(handleApiError);
+    }
+  }
+
+  function setAuthenticatedUi(user) {
+    const authenticated = Boolean(user);
+    const logoutButton = document.getElementById('logout-btn');
+    const userDisplay = document.getElementById('user-display');
+    const sidebar = document.getElementById('sidebar');
+    const navbar = document.getElementById('app-navbar');
+    const footer = document.getElementById('app-footer');
+
+    logoutButton.classList.toggle('hidden', !authenticated);
+    navbar.classList.toggle('hidden', !authenticated);
+    navbar.classList.toggle('flex', authenticated);
+    footer.classList.toggle('hidden', !authenticated);
+    userDisplay.textContent = authenticated
+      ? user.name + ' · ' + user.role
+      : 'Não autenticado';
+
+    if (!authenticated) {
+      sidebar.classList.add('hidden');
+      sidebar.classList.remove('flex');
+    }
+
+    const isAdmin = authenticated && ['admin', 'administrador'].indexOf(
+      normalizeKey(user.role)
+    ) !== -1;
+    document.querySelectorAll('[data-role="admin"]').forEach(function(control) {
+      control.classList.toggle('hidden', !isAdmin);
+    });
+    const isTeacher = authenticated && ['admin', 'administrador', 'professor', 'pesquisador'].indexOf(
+      normalizeKey(user.role)
+    ) !== -1;
+    document.querySelectorAll('[data-role="teacher"]').forEach(function(control) {
+      control.classList.toggle('hidden', !isTeacher);
+    });
+    const experimentData = document.getElementById('experiment-data');
+    if (experimentData) experimentData.classList.toggle('hidden', !isTeacher && !App.poeAttemptId);
+  }
+
+  function loadDashboard() {
+    return apiCall('dashboard.get').then(renderDashboard);
+  }
+
+  function renderDashboard(metrics) {
+    App.dashboardMetrics = metrics || {};
+    ['controle', 'cobre', 'pemf'].forEach(function(group) {
+      const values = metrics[group] || {};
+      setText('metric-' + group + '-biomass', formatNumber(values.biomass));
+      setText('metric-' + group + '-water', formatNumber(values.water));
+      setText('metric-' + group + '-ndvi', formatNumber(values.ndvi));
+    });
+  }
+
+  function interpretExperiment(button) {
+    const focus = document.getElementById('experiment-focus');
+    withBusy(button, function() {
+      setStatus('Gerando interpretação pedagógica...', 'loading');
+      return apiCall('ia.interpretar', { foco: focus ? focus.value.trim() : '' })
+        .then(function(result) {
+          renderExperimentInterpretation(result);
+          clearStatus();
+        });
+    });
+  }
+
+  function renderExperimentInterpretation(result) {
+    const report = result && result.interpretacao ? result.interpretacao : {};
+    setText('interpretation-summary', report.leituraPedagogica || '');
+    setText('interpretation-comparison', report.comparacaoControlePemf || '');
+    renderTextList('interpretation-confounders', report.confundidores || []);
+    renderTextList('interpretation-limitations', report.limitacoes || []);
+    renderTextList('interpretation-questions', report.perguntasInvestigativas || []);
+    setText('interpretation-warning', report.aviso || '');
+    const container = document.getElementById('experiment-interpretation');
+    if (container) container.classList.remove('hidden');
+  }
+
+  function renderTextList(id, items) {
+    const list = document.getElementById(id);
+    if (!list) return;
+    list.replaceChildren();
+    items.forEach(function(item) {
+      const row = document.createElement('li');
+      row.textContent = String(item);
+      list.appendChild(row);
+    });
+  }
+
+  function loadCanteiros() {
+    return apiCall('canteiros.list').then(function(rows) {
+      App.canteiros = rows || [];
+      renderCanteiros(App.canteiros);
+      updateCanteiroSelects(App.canteiros);
+    });
+  }
+
+  function renderCanteiros(rows) {
+    const body = document.getElementById('canteiros-table-body');
+    const empty = document.getElementById('canteiros-empty');
+    if (!body || !empty) return;
+    body.replaceChildren();
+    empty.classList.toggle('hidden', rows.length > 0);
+
+    rows.forEach(function(row) {
+      const id = getRecordValue(row, ['id', 'codigo', 'canteiro_id', 'id_canteiro']) || '—';
+      const name = getRecordValue(row, ['nome', 'name', 'canteiro']) || 'Sem nome';
+      const type = getRecordValue(row, ['tipo', 'type', 'grupo', 'tratamento']) || 'Não definido';
+      const status = getRecordValue(row, ['status', 'situacao']) || 'Ativo';
+      body.appendChild(createTableRow([id, name, type, status]));
+    });
+  }
+
+  function saveCanteiro(form) {
+    clearInlineError('canteiro-error');
+    withBusy(form, function() {
+      return apiCall('canteiros.create', formToObject(form))
+        .then(function() {
+          form.reset();
+          setStatus('Canteiro cadastrado com sucesso.', 'success');
+          return loadCanteiros();
+        })
+        .then(function() {
+          showPage('Canteiros_List', { skipLoad: true });
+          clearStatusAfterDelay();
+        })
+        .catch(function(error) {
+          showInlineError('canteiro-error', error.message);
+          throw error;
+        });
+    });
+  }
+
+  function loadLeituras() {
+    return apiCall('leituras.list', { limit: 50 }).then(renderLeituras);
+  }
+
+  function renderLeituras(rows) {
+    const body = document.getElementById('leituras-table-body');
+    const empty = document.getElementById('leituras-empty');
+    if (!body || !empty) return;
+    body.replaceChildren();
+    empty.classList.toggle('hidden', rows.length > 0);
+
+    rows.forEach(function(row) {
+      body.appendChild(createTableRow([
+        formatDate(getRecordValue(row, ['data', 'timestamp', 'horario'])),
+        getRecordValue(row, ['canteiro', 'canteiro_id', 'id_canteiro']) || '—',
+        formatNumber(getRecordValue(row, ['temp', 'temperatura'])),
+        formatNumber(getRecordValue(row, ['umid_ar', 'umidade_ar', 'humidity'])),
+        formatNumber(getRecordValue(row, ['umid_solo', 'umidade_solo', 'moisture']))
+      ]));
+    });
+  }
+
+  function loadBiomassaForm() {
+    if (App.canteiros.length) {
+      updateCanteiroSelects(App.canteiros);
+      return Promise.resolve();
+    }
+    return loadCanteiros();
+  }
+
+  function saveBiomassa(form) {
+    clearInlineError('biomassa-error');
+    withBusy(form, function() {
+      return apiCall('biomassa.create', formToObject(form))
+        .then(function() {
+          form.reset();
+          updateCanteiroSelects(App.canteiros);
+          setStatus('Medição registrada com sucesso.', 'success');
+          clearStatusAfterDelay();
+        })
+        .catch(function(error) {
+          showInlineError('biomassa-error', error.message);
+          throw error;
+        });
+    });
+  }
+
+  function loadSettings() {
+    return apiCall('settings.get').then(function(data) {
+      document.getElementById('sheets-id-input').value = data.spreadsheetsId || '';
+    });
+  }
+
+  function saveSettings(form) {
+    clearInlineError('settings-error');
+    withBusy(form, function() {
+      return apiCall('settings.update', formToObject(form))
+        .then(function() {
+          setStatus('Configuração salva. As próximas operações usarão a nova planilha.', 'success');
+          clearStatusAfterDelay();
+        })
+        .catch(function(error) {
+          showInlineError('settings-error', error.message);
+          throw error;
+        });
+    });
+  }
+
+  function calculateIcr(form) {
+    const results = document.getElementById('icr-results');
+    withBusy(form, function() {
+      results.textContent = 'Calculando...';
+      return apiCall('icr.calculate', formToObject(form))
+        .then(function(data) {
+          results.textContent = data.ion + ': ' +
+            new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 3 }).format(data.frequencyHz) +
+            ' Hz para ' + formatNumber(data.microTesla) + ' uT.';
+        })
+        .catch(function(error) {
+          results.textContent = error.message;
+          throw error;
+        });
+    });
+  }
+
+  // POE: a predição justificada é persistida antes de os dados serem revelados.
+  function submitPoe(form) {
+    const result = document.getElementById('poe-result');
+    const feedback = document.getElementById('poe-feedback');
+    const fonte = document.getElementById('poe-fonte');
+    withBusy(form, function() {
+      result.classList.remove('hidden');
+      feedback.textContent = 'Comparando sua predição com os dados...';
+      fonte.textContent = '';
+      return apiCall('poe.predict', formToObject(form))
+        .then(function(data) {
+          App.poeAttemptId = data.attemptId;
+          renderDashboard(data.metricas || {});
+          const experimentData = document.getElementById('experiment-data');
+          if (experimentData) experimentData.classList.remove('hidden');
+          feedback.textContent = data.feedback;
+          fonte.textContent = data.fonte === 'gemini'
+            ? 'Feedback gerado pela IA a partir dos dados reais do experimento.'
+            : 'Feedback gerado localmente a partir dos dados reais (IA não configurada).';
+          Array.from(form.elements).forEach(function(control) { control.disabled = true; });
+          const observation = document.getElementById('poe-observacao');
+          if (observation) observation.focus();
+        })
+        .catch(function(error) {
+          feedback.textContent = error.message;
+          fonte.textContent = '';
+          throw error;
+        });
+    });
+  }
+
+  function completePoe(form) {
+    const feedback = document.getElementById('poe-feedback');
+    withBusy(form, function() {
+      const payload = formToObject(form);
+      payload.attemptId = App.poeAttemptId;
+      return apiCall('poe.complete', payload)
+        .then(function(data) {
+          Array.from(form.elements).forEach(function(control) { control.disabled = true; });
+          feedback.textContent = data.message;
+          setStatus('Ciclo POE concluído e registrado.', 'success');
+          clearStatusAfterDelay();
+        })
+        .catch(function(error) {
+          feedback.textContent = error.message;
+          throw error;
+        });
+    });
+  }
+
+  function downloadCsv(form) {
+    withBusy(form, function() {
+      return apiCall('export.csv', formToObject(form)).then(function(data) {
+        const blob = new Blob([data.content], { type: data.mimeType });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = data.filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+        setStatus('Arquivo CSV gerado.', 'success');
+        clearStatusAfterDelay();
+      });
+    });
+  }
+
+  function runTests(button) {
+    withBusy(button, function() {
+      return apiCall('tests.run').then(function(data) {
+        const result = document.getElementById('test-results');
+        result.textContent = data.success
+          ? data.tests_passed + ' de ' + data.tests_run + ' testes aprovados.'
+          : data.tests_passed + ' de ' + data.tests_run + ' testes aprovados. Revise as falhas.';
+      });
+    });
+  }
+
+  function triggerEmergencyShutdown(button) {
+    const confirmed = window.confirm(
+      'Confirma a parada de emergência? O sistema enviará um alerta aos responsáveis.'
+    );
+    if (!confirmed) return;
+
+    withBusy(button, function() {
+      return apiCall('safety.shutdown').then(function() {
+        setStatus('Parada de emergência acionada e alerta enviado.', 'error');
+      });
+    });
+  }
+
+  function withBusy(target, operation) {
+    const controls = target.matches && target.matches('form')
+      ? Array.from(target.querySelectorAll('button, input, select, textarea'))
+      : [target];
+    controls.forEach(function(control) {
+      control.disabled = true;
+      control.classList.add('is-busy');
+    });
+
+    Promise.resolve()
+      .then(operation)
+      .catch(function(error) {
+        handleApiError(error, { preservePage: true });
+      })
+      .finally(function() {
+        controls.forEach(function(control) {
+          control.disabled = false;
+          control.classList.remove('is-busy');
+        });
+      });
+  }
+
+  function handleApiError(error, options) {
+    const settings = options || {};
+    if (['AUTH_REQUIRED', 'SESSION_EXPIRED'].indexOf(error.code) !== -1) {
+      clearSession();
+      setAuthenticatedUi(null);
+      showPage('Login');
+    } else if (!settings.preservePage && !App.user) {
+      clearSession();
+      setAuthenticatedUi(null);
+      showPage('Login');
+    }
+    setStatus(error.message || 'Não foi possível concluir a operação.', 'error');
+  }
+
+  function clearSession() {
+    App.token = '';
+    App.user = null;
+    App.canteiros = [];
+    localStorage.removeItem('eletrocultura.session');
+  }
+
+  function formToObject(form) {
+    const data = {};
+    new FormData(form).forEach(function(value, key) {
+      data[key] = typeof value === 'string' ? value.trim() : value;
+    });
+    return data;
+  }
+
+  function updateCanteiroSelects(rows) {
+    const select = document.getElementById('biomassa-canteiro');
+    if (!select) return;
+    const currentValue = select.value;
+    select.replaceChildren(new Option('Selecione', ''));
+    rows.forEach(function(row) {
+      const id = getRecordValue(row, ['id', 'codigo', 'canteiro_id', 'id_canteiro']);
+      const name = getRecordValue(row, ['nome', 'name', 'canteiro']) || id;
+      if (id) select.add(new Option(name + ' · ' + id, id));
+    });
+    select.value = currentValue;
+  }
+
+  function getRecordValue(record, aliases) {
+    const normalized = {};
+    Object.keys(record || {}).forEach(function(key) {
+      normalized[normalizeKey(key)] = record[key];
+    });
+    for (let index = 0; index < aliases.length; index += 1) {
+      const value = normalized[normalizeKey(aliases[index])];
+      if (value !== undefined && value !== null && value !== '') return value;
+    }
+    return '';
+  }
+
+  function normalizeKey(value) {
+    return String(value || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_|_$/g, '');
+  }
+
+  function createTableRow(values) {
+    const row = document.createElement('tr');
+    row.className = 'border-b';
+    values.forEach(function(value) {
+      const cell = document.createElement('td');
+      cell.className = 'p-3 break-words';
+      cell.textContent = value === '' || value == null ? '—' : String(value);
+      row.appendChild(cell);
+    });
+    return row;
+  }
+
+  function formatDate(value) {
+    if (!value) return '—';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return String(value);
+    return new Intl.DateTimeFormat('pt-BR', {
+      dateStyle: 'short',
+      timeStyle: 'short'
+    }).format(date);
+  }
+
+  function formatNumber(value) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) return '—';
+    return new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(number);
+  }
+
+  function setText(id, value) {
+    const element = document.getElementById(id);
+    if (element) element.textContent = value;
+  }
+
+  function setStatus(message, kind) {
+    const status = document.getElementById('app-status');
+    status.textContent = message;
+    status.dataset.kind = kind || 'info';
+    status.classList.remove('hidden');
+  }
+
+  function clearStatus() {
+    const status = document.getElementById('app-status');
+    status.textContent = '';
+    status.classList.add('hidden');
+    delete status.dataset.kind;
+  }
+
+  function clearStatusAfterDelay() {
+    window.setTimeout(clearStatus, 3500);
+  }
+
+  function showInlineError(id, message) {
+    const element = document.getElementById(id);
+    if (!element) return;
+    element.textContent = message;
+    element.classList.remove('hidden');
+  }
+
+  function clearInlineError(id) {
+    const element = document.getElementById(id);
+    if (!element) return;
+    element.textContent = '';
+    element.classList.add('hidden');
+  }
+
+  function updateNavigationState(pageId) {
+    document.querySelectorAll('[data-page]').forEach(function(control) {
+      if (control.dataset.page === pageId) {
+        control.setAttribute('aria-current', 'page');
+      } else {
+        control.removeAttribute('aria-current');
+      }
+    });
+  }
+
+  function getPageFromHash() {
+    const hash = decodeURIComponent(location.hash.replace(/^#/, ''));
+    return !hash || hash.indexOf('tok=') === 0 ? 'Dashboard' : hash;
+  }
+
+  function toggleMobileMenu() {
+    const sidebar = document.getElementById('sidebar');
+    const toggle = document.getElementById('menu-toggle');
+    const expanded = toggle.getAttribute('aria-expanded') === 'true';
+    sidebar.classList.toggle('hidden', expanded);
+    sidebar.classList.toggle('flex', !expanded);
+    toggle.setAttribute('aria-expanded', String(!expanded));
+  }
+
+  function closeMobileMenu() {
+    const sidebar = document.getElementById('sidebar');
+    const toggle = document.getElementById('menu-toggle');
+    sidebar.classList.add('hidden');
+    sidebar.classList.remove('flex');
+    toggle.setAttribute('aria-expanded', 'false');
+  }
+</script>
+
+<script>
+/* codex-school-community-ux-script: pequenos ajustes de contexto escolar */
+(function() {
+  if (window.__codexSchoolCommunityUx) return;
+  window.__codexSchoolCommunityUx = true;
+
+  function ready(fn) {
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn, { once: true });
+    else fn();
+  }
+
+  ready(function() {
+    document.documentElement.setAttribute('data-community-context', 'school');
+
+    document.querySelectorAll('form').forEach(function(form) {
+      if (!form.getAttribute('aria-label') && !form.getAttribute('aria-labelledby')) {
+        form.setAttribute('aria-label', 'Formulario da comunidade escolar');
+      }
+    });
+
+    document.querySelectorAll('input, select, textarea').forEach(function(field) {
+      if (!field.id && field.name) field.id = 'field-' + String(field.name).replace(/[^a-zA-Z0-9_-]/g, '-');
+      if (field.required && !field.getAttribute('aria-required')) field.setAttribute('aria-required', 'true');
+      if (!field.getAttribute('autocomplete')) {
+        var type = (field.getAttribute('type') || '').toLowerCase();
+        var name = (field.getAttribute('name') || field.id || '').toLowerCase();
+        if (type === 'email' || name.indexOf('email') >= 0) field.setAttribute('autocomplete', 'email');
+        else if (name.indexOf('nome') >= 0 || name.indexOf('name') >= 0) field.setAttribute('autocomplete', 'name');
+        else if (name.indexOf('senha') >= 0 || name.indexOf('password') >= 0) field.setAttribute('autocomplete', 'current-password');
+      }
+    });
+
+    document.querySelectorAll('button:not([type])').forEach(function(button) {
+      button.setAttribute('type', 'button');
+    });
+  });
+})();
+</script>
+
+<script>
+/* codex-project-behavior-standardization: microcomportamentos compartilhados */
+(function() {
+  if (window.__codexProjectBehaviorStandardization) return;
+  window.__codexProjectBehaviorStandardization = true;
+
+  var SUBMIT_LOCK_MS = 2500;
+  var invalidFocusPending = false;
+
+  function isElement(value) {
+    return value && value.nodeType === 1;
+  }
+
+  function prefersReducedMotion() {
+    return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+
+  function unlockForm(form, button) {
+    if (isElement(form)) {
+      delete form.dataset.codexSubmitting;
+      if (form.getAttribute('aria-busy') === 'true') form.setAttribute('aria-busy', 'false');
+    }
+
+    if (isElement(button) && button.dataset.codexSubmitLocked === 'true') {
+      delete button.dataset.codexSubmitLocked;
+      button.disabled = false;
+      button.removeAttribute('aria-disabled');
+    }
+  }
+
+  function restoreSubmitLocks(scope) {
+    var root = scope && scope.querySelectorAll ? scope : document;
+
+    root.querySelectorAll('form[data-codex-submitting="true"]').forEach(function(form) {
+      unlockForm(form);
+    });
+
+    root.querySelectorAll('[data-codex-submit-locked="true"]').forEach(function(button) {
+      unlockForm(null, button);
+    });
+  }
+
+  document.addEventListener('submit', function(event) {
+    var form = event.target;
+    if (!isElement(form) || String(form.tagName).toLowerCase() !== 'form') return;
+    if (form.hasAttribute('data-no-submit-lock')) return;
+
+    if (form.dataset.codexSubmitting === 'true') {
+      event.preventDefault();
+      return;
+    }
+
+    if (typeof form.checkValidity === 'function' && !form.checkValidity()) return;
+
+    form.dataset.codexSubmitting = 'true';
+    form.setAttribute('aria-busy', 'true');
+
+    var button = event.submitter || form.querySelector('button[type="submit"], input[type="submit"], button:not([type])');
+    if (isElement(button) && !button.disabled && !button.hasAttribute('data-no-submit-lock')) {
+      button.dataset.codexSubmitLocked = 'true';
+      button.disabled = true;
+      button.setAttribute('aria-disabled', 'true');
+    }
+
+    window.setTimeout(function() {
+      unlockForm(form, button);
+    }, SUBMIT_LOCK_MS);
+  }, true);
+
+  document.addEventListener('invalid', function(event) {
+    var field = event.target;
+    if (!isElement(field) || invalidFocusPending) return;
+    invalidFocusPending = true;
+
+    window.setTimeout(function() {
+      invalidFocusPending = false;
+      if (!document.documentElement.contains(field)) return;
+      try {
+        field.scrollIntoView({ block: 'center', inline: 'nearest', behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+        field.focus({ preventScroll: true });
+      } catch (error) {
+        field.focus();
+      }
+    }, 0);
+  }, true);
+
+  document.addEventListener('keydown', function(event) {
+    if (event.key !== 'Escape') return;
+    var closedSomething = false;
+
+    var dialogs = Array.prototype.slice.call(document.querySelectorAll('dialog[open]'));
+    var dialog = dialogs[dialogs.length - 1];
+    if (dialog && typeof dialog.close === 'function') {
+      dialog.close();
+      closedSomething = true;
+    }
+
+    if (!closedSomething) {
+      var details = Array.prototype.slice.call(document.querySelectorAll('details[open]'));
+      var detail = details[details.length - 1];
+      if (detail) {
+        detail.removeAttribute('open');
+        closedSomething = true;
+      }
+    }
+
+    document.querySelectorAll('[aria-expanded="true"]').forEach(function(toggle) {
+      toggle.setAttribute('aria-expanded', 'false');
+      closedSomething = true;
+    });
+
+    if (closedSomething) event.preventDefault();
+  }, true);
+
+  window.addEventListener('pageshow', function() {
+    restoreSubmitLocks(document);
+  });
+
+  document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'visible') restoreSubmitLocks(document);
+  });
+})();
+</script>

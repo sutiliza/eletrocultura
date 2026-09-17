@@ -1,0 +1,116 @@
+<!--
+ * ══════════════════════════════════════════════════════════════════════════════
+ * SUTILIZA - ELETROCULTURA — StyleBase.html
+ * ══════════════════════════════════════════════════════════════════════════════
+ *
+ * DESCRIÇÃO:
+ *   Estilos base compartilhados por todas as páginas do sistema. Inclui:
+ *   - Estilos mobile-first (codex-s20-mobile-first)
+ *   - Padrões WCAG 2.1 AA da FROTA (fleet-mobile-wcag-aa)
+ *   - Ajustes para uso recorrente por comunidade escolar
+ *   - Design system padrão da frota
+ *
+ * USO:
+ *   Incluir em todas as páginas HTML via scriptlet:
+ *   <?!= HtmlService.createHtmlOutputFromFile('StyleBase').getContent() ?>
+ *
+ * AUTOR: Sutiliza - Eletrocultura
+ * VERSÃO: 1.0.0
+ * DATA: 2026-09-02
+ * ══════════════════════════════════════════════════════════════════════════════
+-->
+
+<style>
+/* codex-s20-mobile-first: Samsung S20 / Chrome mobile baseline (360x800 CSS px) */
+@media screen {
+  :where(html) {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+  :where(*, *::before, *::after) {
+    box-sizing: border-box;
+  }
+  :where(body) {
+    min-width: 320px;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+  :where(main, .app, .page, .container, .content, .main-content, .dashboard, .view) {
+    max-width: 100%;
+  }
+  :where(img, video, canvas, svg) {
+    max-width: 100%;
+    height: auto;
+  }
+  :where(p, li, td, th, label, legend, button, a, h1, h2, h3, h4, h5, h6) {
+    overflow-wrap: anywhere;
+  }
+  :where(input, select, textarea, button) {
+    font: inherit;
+    max-width: 100%;
+  }
+  :where(input, select, textarea) {
+    font-size: max(16px, 1rem);
+  }
+  :where(button, [role="button"], input, select, textarea, a) {
+    touch-action: manipulation;
+  }
+  :where(.table-wrap, .table-wrapper, .table-responsive, .table-container, .responsive-table, .data-table-wrapper) {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+@media (max-width: 480px) {
+  :where(body) {
+    font-size: 16px;
+  }
+  :where(.grid, .cards, .dashboard-grid, .stats-grid, .form-grid, .filters-grid) {
+    grid-template-columns: 1fr !important;
+  }
+  :where(.toolbar, .actions, .button-row, .filters, .form-actions, .modal-actions, .header-actions) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  :where(.btn, button, input, select, textarea) {
+    min-height: 44px;
+  }
+  :where(table) {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  :where(th, td) {
+    white-space: nowrap;
+  }
+  :where(.card, .panel, .modal, .dialog, .drawer) {
+    max-width: calc(100vw - 24px);
+  }
+}
+@media (max-width: 360px) {
+  :where(body) {
+    padding-left: max(12px, env(safe-area-inset-left));
+    padding-right: max(12px, env(safe-area-inset-right));
+  }
+  :where(.card, .panel, .section, .modal-content, .dialog-content) {
+    padding: 12px;
+  }
+  :where(h1) {
+    font-size: clamp(1.45rem, 1.2rem + 2vw, 2rem);
+  }
+  :where(h2) {
+    font-size: clamp(1.2rem, 1rem + 1.4vw, 1.55rem);
+  }
+}
+</style>
+
+<style id="fleet-mobile-wcag-aa">
+  /* Contrato FROTA: ergonomia S20 e WCAG 2.1 AA. */
+  html, body { max-width: 100%; overflow-x: hidden; }
+  :is(button, [role="button"], input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea) {
+    min-width: 48px !important;
+    min-height: 48px !important;
+    touch-action: manipulation;
+  }
+</style>
